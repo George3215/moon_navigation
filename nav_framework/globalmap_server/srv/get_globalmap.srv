@@ -1,0 +1,10 @@
+# request: global为true时，返回全局地图，否则返回局部地图
+bool global
+---
+bool success
+# # for local map params
+# bool map_ok
+# bool pose_ok
+# bool goal_ok
+# # 对于localmap,还需检查全局路径是否被初始化
+# bool path_ok

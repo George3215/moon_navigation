@@ -1,0 +1,86 @@
+# Settings of the plugins. (The plugins should be stored in script/plugins)
+
+# min_filter fills in minimum value around the invalid cell.
+min_filter:                                   
+  enable: True                                # weather to load this plugin
+  fill_nan: False                             # Fill nans to invalid cells of elevation layer.
+  is_height_layer: True                       # If this is a height layer (such as elevation) or not (such as traversability)
+  layer_name: "min_filter"                    # The layer name.
+  extra_params:                               # This params are passed to the plugin class on initialization.
+    dilation_size: 1                         # The patch size to apply
+    iteration_n: 30                           # The number of iterations
+# Apply smoothing.
+smooth_filter:
+  enable: True
+  fill_nan: False
+  is_height_layer: True
+  layer_name: "smooth"
+  extra_params:
+    input_layer_name: "min_filter"
+# Apply inpainting using opencv
+inpainting:
+  enable: True
+  fill_nan: False
+  is_height_layer: True
+  layer_name: "inpaint"
+  extra_params:
+    method: "telea"                           # telea or ns
+
+# Apply smoothing for inpainted layer
+erosion:
+  enable: True
+  fill_nan: False
+  is_height_layer: False
+  layer_name: "erosion"
+  extra_params:
+    input_layer_name: "traversability"
+    dilation_size: 3
+    iteration_n: 20
+    reverse: True
+  
+# custom traversability
+custom_traversability_slope:
+  enable: True
+  fill_nan: False
+  is_height_layer: False
+  layer_name: "custom_traversability_slope"
+  extra_params:
+    input_layer_name: "inpaint"
+    multipier: 1
+    grid_resolution: 0.1
+
+
+# 综合通行代价插件 (坡度 + 粗糙度)
+custom_traversability_cost:
+  enable: True
+  fill_nan: False
+  is_height_layer: False
+  layer_name: "custom_traversability_cost"
+  extra_params:
+    input_layer_name: "inpaint"
+      slope_weight: 0.74
+      roughness_weight: 0.26
+      slope_critical_deg: 28.0
+      roughness_critical: 0.075
+      slope_exponent: 1.7
+      roughness_exponent: 1.4
+      danger_slope_deg: 16.0
+      danger_roughness: 0.040
+      danger_boost: 0.58
+      cost_threshold: 0.05
+      nan_cost: 0.62
+      nan_dilate: 2
+    grid_resolution: 0.1
+    sigma: 5.0 # 高斯模糊
+    roughness_kernel: 8
+
+# custom_traversability_roughness:
+#   enable: False
+#   fill_nan: False
+#   is_height_layer: False
+#   layer_name: "custom_traversability_roughness"
+#   extra_params:
+#     input_layer_name: "elevation"
+#     multipier: 100
+#     neighbor_range: 1
+#     grid_resolution: 0.1

@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="map_generation" type="trav2occ_slope" name="trav2occ_slope" output="screen">
+      <rosparam command="load" file="$(find map_generation)/config/tra2occ_slope.yaml" />
+    </node>
+
+  </launch>

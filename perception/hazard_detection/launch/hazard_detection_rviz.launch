@@ -1,0 +1,8 @@
+<launch>
+
+    <node pkg='hazard_detection'  type='hazard_detection' name='hazard_detection'  output='screen'>
+         <rosparam  file="$(find hazard_detection)/config/config.yaml"  command='load'/>
+    </node>
+     <!-- Launch RViz with the demo configuration. -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hazard_detection)/rviz/visual.rviz"/>
+</launch>

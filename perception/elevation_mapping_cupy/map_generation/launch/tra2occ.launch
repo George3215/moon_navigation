@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="map_generation" type="trav2occ" name="trav2occ" output="screen">
+      <rosparam command="load" file="$(find map_generation)/config/tra2occ.yaml" />
+    </node>
+
+  </launch>

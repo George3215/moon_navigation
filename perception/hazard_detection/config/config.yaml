@@ -1,0 +1,94 @@
+####################################################
+# 订阅点云消息
+pointcloud_topic_name: "/zed2/point_cloud/cloud_registered"
+camera_frame_id: "zed2_left_camera_optical_frame"
+
+# # 如果输入点云是融合点云，改为下面
+multi_sensor: false
+# pointcloud_2_topic_name: "/ZED/camera_nav/depth/points"
+# camera_2_frame_id: "/camera_nav_pointcloud_link"
+
+####################################################
+# mode_topic
+mode_activate: true
+mode_topic: /navigation_mode
+set_mode_name: "Mode 2"
+
+#############################################
+# 车体相关
+pose_topic_name: "/pose_with_covariance" #这个只起到callback更新tf的作用
+vehicle_frame_id: "camera_frame"
+#vehicle_frame_id: "zhurong_mars_rover/chassis"
+map_frame_id: "odom"
+
+# 局部地图可视化：可视化局部地图，但会降低速度
+visual_local_map: true
+
+###滤波器参数
+# 下采样
+downsample_filter:
+  # 体素大小
+  downsample_resolution: 0.2
+# RANSAC
+ransac_filter:
+  # 距离阈值，值越大拟合的点越多
+  dis_threshold: 0.08
+# 直通滤波
+passthrough_filter:
+  # 滤波轴 
+  x_axis:
+    #最小值，将小于该值的点云去除（如z车轮）
+    x_min: 0.0
+    #最大值，将大于该值的点云去除（如远处物体）
+    x_max: 10.0 #8.0
+  x_axis_2:
+    #最小值，将小于该值的点云去除
+    x_min: 0.0
+    #最大值，将大于该值的点云去除
+    x_max: 5.0
+  # y轴一次滤波：限制点云范围
+  y_axis:
+    #最小值，将小于该值的点云去除
+    y_min: -8.0
+    #最大值，将大于该值的点云去除
+    y_max: 8.0
+  # y轴二次滤波：将边缘点云去除
+  y_axis_2:
+    #最小值，将小于该值的点云去除
+    y_min: -5.0
+    #最大值，将大于该值的点云去除
+    y_max: 5.0
+  z_axis:
+    #最小值，低于该高度的点云会被显示（如地面上的坑）
+    height_min: -0.3 #-0.38为地面高度
+    #最大值，高于该高度的点云会被显示（如石头等障碍物）
+    height_max: -0.1 #-0.23
+# 离群点滤波
+outlier_filter:
+  # 选取的最近邻点总数,用于计算平均距离
+  outlier_k: 10
+  # 判断是否为离群点的阈值，超过该值则认为是离群点
+  outlier_threshold: 1.0
+
+###障碍物阴影参数
+obstacle_threshold:
+  obstacle_resolution: 0.1 #分辨率和栅格图保持一致
+  obstacle_front_threshold: 1.0 #障碍物前方阴影区域大小  #1.0
+  obstacle_back_threshold:  5.0 #障碍物后方阴影区域大小 #5.0
+
+###栅格图参数
+grid_map:
+  # 分辨率（m）
+  # ！不是最后融合输出的分辨率
+  resolution: 0.2
+  # 栅格图中显示障碍物周围的范围（整数）
+  # 数值越大 障碍物周围的标记不可达的范围越大
+  # 注意大分辨率时这个值应该适当变小
+  safety_dis: 1
+  # # 栅格图模式
+  # #模式true：动态刷新，过去的障碍会随时间被刷新掉
+  # #模式false：障碍不刷新，直接构建全局地图
+  # is_refresh: true
+  # #  如果使用true：把几张地图融合成一个最终的地图
+  # # 动态刷新率
+  # fusemap_num: 100

@@ -1,0 +1,7 @@
+<launch>
+
+    <node pkg='c_pursuit_ctrl'  type='path_publisher' name='path_publisher'  output='screen'>
+         
+    </node>
+
+</launch>

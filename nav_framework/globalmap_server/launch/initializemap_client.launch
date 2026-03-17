@@ -1,0 +1,5 @@
+<launch>
+  <rosparam command="load" file="$(find globalmap_server)/config/config.yaml" />
+  <node name="initializemap_client" pkg="globalmap_server" type="initializemap_client" output='screen'>
+  </node>
+</launch>

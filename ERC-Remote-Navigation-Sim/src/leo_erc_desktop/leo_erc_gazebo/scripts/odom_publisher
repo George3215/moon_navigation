@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""从 /gazebo/model_states 读取模型位姿与速度，发布 tf 和 /odom 里程计。
+
+参数（ROS 参数服务器）：
+ - ~model_name (string): Gazebo 中模型名称，默认 'leo'
+ - ~base_frame (string): 里程计子坐标系，默认 'base_footprint'
+ - ~odom_frame (string): 里程计坐标系，默认 'odom'
+ - ~topic (string): gazebo 模型状态话题，默认 '/gazebo/model_states'
+"""
+
+import rospy
+from gazebo_msgs.msg import ModelStates
+from nav_msgs.msg import Odometry
+import tf2_ros
+from geometry_msgs.msg import TransformStamped, PoseWithCovarianceStamped
+import threading
+
+
+class GazeboOdomPublisher(object):
+	def __init__(self):
+		self.model_name = rospy.get_param('~model_name', 'leo')
+		self.base_frame = rospy.get_param('~base_frame', 'base_footprint')
+		self.odom_frame = rospy.get_param('~odom_frame', 'odom')
+		self.topic = rospy.get_param('~topic', '/gazebo/model_states')
+		self.publish_rate = float(rospy.get_param('~publish_rate', 20.0))
+
+		self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=10)
+		self.pose_pub = rospy.Publisher(rospy.get_param('~pose_topic', '/pose_with_covariance'), PoseWithCovarianceStamped, queue_size=10)
+		self.tf_broadcaster = tf2_ros.TransformBroadcaster()
+
+		rospy.Subscriber(self.topic, ModelStates, self.model_states_cb, queue_size=1)
+		rospy.loginfo('GazeboOdomPublisher: listening %s, publishing /odom and tf %s->%s',
+					  self.topic, self.odom_frame, self.base_frame)
+		self.last_stamp = rospy.Time(0)
+		self.latest_pose = None
+		self.latest_twist = None
+		self.lock = threading.Lock()
+
+		# timer-based publishing at fixed rate
+		self.timer = rospy.Timer(rospy.Duration(1.0 / self.publish_rate), self.timer_cb)
+
+	def timer_cb(self, event):
+		with self.lock:
+			if self.latest_pose is None:
+				return
+			pose = self.latest_pose
+			twist = self.latest_twist
+
+		# use current time for published stamps to ensure monotonic increasing
+		stamp = rospy.Time.now()
+
+		# publish tf: odom -> base_frame
+		t = TransformStamped()
+		t.header.stamp = stamp
+		t.header.frame_id = self.odom_frame
+		t.child_frame_id = self.base_frame
+		t.transform.translation.x = pose.position.x
+		t.transform.translation.y = pose.position.y
+		t.transform.translation.z = pose.position.z
+		t.transform.rotation = pose.orientation
+		self.tf_broadcaster.sendTransform(t)
+
+		# publish odometry
+		odom = Odometry()
+		odom.header.stamp = stamp
+		odom.header.frame_id = self.odom_frame
+		odom.child_frame_id = self.base_frame
+		odom.pose.pose = pose
+		odom.twist.twist = twist
+		self.odom_pub.publish(odom)
+
+		# publish PoseWithCovarianceStamped
+		pose_msg = PoseWithCovarianceStamped()
+		pose_msg.header.stamp = stamp
+		pose_msg.header.frame_id = self.odom_frame
+		pose_msg.pose.pose = pose
+		# copy covariance from odom if available (default zeros)
+		try:
+			pose_msg.pose.covariance = odom.pose.covariance
+		except Exception:
+			pose_msg.pose.covariance = [0.0]*36
+		self.pose_pub.publish(pose_msg)
+
+	def model_states_cb(self, msg: ModelStates):
+		try:
+			idx = msg.name.index(self.model_name)
+		except ValueError:
+			return
+
+		with self.lock:
+			self.latest_pose = msg.pose[idx]
+			self.latest_twist = msg.twist[idx]
+
+
+def main():
+	rospy.init_node('gazebo_model_odom_publisher')
+	GazeboOdomPublisher()
+	rospy.spin()
+
+
+if __name__ == '__main__':
+	main()
+

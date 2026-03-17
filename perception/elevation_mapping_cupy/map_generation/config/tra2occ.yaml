@@ -1,0 +1,17 @@
+grid_map_topic: /elevation_mapping/traversability
+occupancy_grid_topic: /mode3/occupancy_grid
+transform_layer: custom_traversability_slope
+# 是否要发布二值化的地图
+get_01_value: false
+# 如果二值化 指定一个阈值
+threshold: 70 #80
+# 微调代价因子
+downscale_cost_factor: 1
+map_frame: "odom"
+
+# 左右设置无效边界,m
+side_invalid_border: 3
+# 这个位置前面全设为有效,m
+front_all_valid_border: 5
+# 后方设置无效边界,m
+back_invalid_border: 2

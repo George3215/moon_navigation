@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="map_generation" type="trav2occ_roughness" name="trav2occ_roughness" output="screen">
+      <rosparam command="load" file="$(find map_generation)/config/tra2occ_roughness.yaml" />
+    </node>
+
+  </launch>

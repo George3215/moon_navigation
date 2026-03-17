@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- 启动RVIZ并加载配置，可视化预瞄点 -->
+    <arg name="rviz_config" default="$(find c_pursuit_ctrl)/rviz/lookahead_point.rviz"/>
+    
+    <!-- RVIZ配置 -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" required="false"/>
+    
+</launch>

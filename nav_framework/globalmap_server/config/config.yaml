@@ -1,0 +1,62 @@
+# Global Subscription
+## 全局订阅：pose和goal用于初始化起点和终点，mode用于储存当前模式
+navigation_pose_topic: /pose_with_covariance #pose_with_covariance_stamped
+navigation_goal_topic: /move_base_simple/goal #pose_stamped
+navigation_mode_topic: /navigation_mode #std_msgs/String
+
+# Perception
+## 订阅者：map_server，该参数需要满足以下要求：
+## globalmap_resolution必须与mode1发布的resolution对应
+## localmap_resolution必须与mode2和mode3发布的resolution对应
+globalmap_resolution: 1.0 #m
+localmap_resolution: 0.2 #m
+## 订阅者：initializemap_client 用于转换并发布initializemap服务
+## 该话题名称需要与mode1发布的地图话题名称一致
+mode1_map_topic: /mode1/occupancy_grid
+## 订阅者：updatemap_client 用于转换并发布updatemap服务
+## 该话题名称需要与mode1发布的地图话题名称一致
+mode2_map_topic: /mode2/occupancy_grid
+mode3_map_topic: /mode3/occupancy_grid
+## map_server可视化，但会影响性能
+visualize_map: true
+
+# Planning
+publish_topic:
+  ## global planner：map_server当接收到mode为1时，发布全局地图和全局目标点用于规划
+  ## map_server发布的topic名称，用于下层规划器订阅
+  global_map: /global_planner/global_map
+  global_goal: /global_planner/global_goal
+  # local planner：map_server当接收到localmapclient的srv时，发布局部地图和局部目标点用于规划
+  ## map_server发布的topic名称，用于下层规划器订阅
+  local_map: /local_planner/local_map 
+  local_goal: /local_planner/local_goal 
+  ## client的service调用频率，会按照这个时间向map_server请求
+  local_publish_interval: 1.0 #s 2.0
+  ## map_server发布的局部地图大小，单位是m
+  local_map_size: 30 #m @##
+
+# 局部目标前瞻距离(m)：在全局路径上向前至少搜索该距离才选取局部目标点
+local_goal_lookahead: 6.0
+## 订阅：initialize_global_path_client接收规划器发布的路径名称
+path_subscribe_topic:
+  ## global path：与全局路径话题对应，用于client订阅并初始化
+  global_path: /global_planner/global_path
+collision_check:
+  ## global_path_updated:订阅平滑后跟踪的全局路径，用于障碍检测
+  global_path_updated_topic: /trajectory_ctrl/global_path_updated
+  # local path：订阅局部规划器规划的路径，用于障碍检测
+  local_path_updated_topic: /local_planner/local_path
+  # 重规划信号的话题名
+  replan_signal_topic: /map_server/replan_signal
+  obstacle_cost_threshold: 88
+  inflation_radius: 0.4 #m
+
+## Trajectory Ctrl
+## map_server在初始化全局路径后，会以一定频率根据车体当前的pose对全局路径进行更新，不依赖其它节点
+## map_server发布的更新后的全局路径和更新时间间隔
+global_path_update_interval: 0.8 #s
+global_path_topic: /map_server/global_path_updated
+
+# Debug & Logging
+## 控制client中非必要日志输出
+verbose_logging: false  # 设置为true则输出所有日志（例如"Mode 1, No need to get localmap"等）

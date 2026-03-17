@@ -1,0 +1,18 @@
+# 话题参数
+ptcloud_input_topic: /hazard_detection/ptcloud2d
+map_output_topic: /mode2/occupancy_grid
+# 地图相关参数
+input_ptcloud_frame_id: camera_frame
+output_map_frame_id: odom
+fused_map_resolution: 0.2
+fuse_map_01value: true
+fuse_map_threshold: 2
+# 融合地图相关
+# fused_map_resolution: 0.5 和输入地图一致
+fused_map_size: 15 #地图大小（m）
+fuse_map_number: 3 #融合地图数量
+####################################################
+# mode_topic
+mode_activate: true
+mode_topic: /navigation_mode
+set_mode_name: "Mode 2"

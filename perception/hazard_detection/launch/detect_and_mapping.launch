@@ -1,0 +1,11 @@
+<launch>
+    <!-- <node pkg='pointcloud_fusion'  type='pointcloud_join' name='pointcloud_join'  output='screen'>
+         <rosparam  file="$(find pointcloud_fusion)/config/subscriber.yaml"  command='load'/>
+    </node> -->
+    <node pkg='hazard_detection'  type='hazard_detection' name='hazard_detection'  output='screen'>
+         <rosparam  file="$(find hazard_detection)/config/config.yaml"  command='load'/>
+    </node>
+    <node pkg='hazard_detection'  type='fuse_hazardmap' name='fuse_hazardmap'  output='screen'>
+         <rosparam  file="$(find hazard_detection)/config/fuse_map.yaml"  command='load'/>
+    </node>
+</launch>

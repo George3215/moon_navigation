@@ -1,0 +1,6 @@
+# 地图来源模式（1/2/3），地图内容
+uint8 mode
+nav_msgs/OccupancyGrid update_map
+---
+# 更新状态
+bool updated

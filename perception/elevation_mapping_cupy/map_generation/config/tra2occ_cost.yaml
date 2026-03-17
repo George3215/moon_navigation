@@ -1,0 +1,9 @@
+grid_map_topic: /elevation_mapping/traversability
+occupancy_grid_topic: /mode3/occupancy_grid
+transform_layer: custom_traversability_cost
+map_frame: "odom"
+
+# 车体半径，足迹内标记为 unknown
+car_radius: 0.55
+# 占据栅格代价低于此值归零（噪声抑制）
+min_cost_threshold: 3

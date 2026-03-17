@@ -1,0 +1,50 @@
+# 订阅的话题名称
+global_path_topic_name: "/trajectory_ctrl/global_path_updated"
+local_path_topic_name: "/local_planner/local_path"
+
+
+pose_topic_name: "/pose_with_covariance"
+goal_topic_name: "/move_base_simple/goal" #算法部分不涉及该话题
+mode_topic_name: "/navigation_mode"
+
+
+# 发布控制指令的话题名称
+cmd_topic_name: "/cmd_vel"
+
+
+# 车体基础参数
+chassis_frame_id: "camera_frame"
+map_frame_id: "odom"
+vehicle_length: 0.305
+
+# c-pursuit参数  预瞄距离dth' = dth-ε*kε
+dth: 1.0
+safety_corridor: 1.0 #εmax
+k3: 1.0 #kε
+# dth: 3.5 #dth
+# safety_corridor: 1.5 #εmax
+# k3: 2.0 #kε
+
+
+# 控制策略
+stop_when_newpath: false #是否在接收到新路径时停车
+
+# 纵向控制参数
+default_speed: 0.6
+max_yaw_rate: 2.5
+rotate_in_place_yaw_rate: 2.0
+min_tracking_speed: 0.08
+turn_speed_gain: 0.25
+heading_error_kp: 1.8
+rotate_in_place_heading_thresh: 0.75
+
+mode1_speed: 0.7
+mode2_speed: 0.5
+mode3_speed: 0.3
+
+# 更新index时，是否使用离车最近的点作为第一个点
+use_closest_index: false # true暂时有问题
+
+# 纯追踪
+use_pure_pursuit: true
+

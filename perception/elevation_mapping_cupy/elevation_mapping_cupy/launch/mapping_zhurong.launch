@@ -1,0 +1,8 @@
+<launch>
+    <!-- Elevation mapping node -->
+    <node pkg="elevation_mapping_cupy" type="elevation_mapping_node" name="elevation_mapping" output="screen">
+        <rosparam command="load" file="$(find elevation_mapping_cupy)/config/zhurong/core_param.yaml"/>
+        <rosparam command="load" file="$(find elevation_mapping_cupy)/config/zhurong/example_setup.yaml"/>
+    </node>
+    <include file="$(find map_generation)/launch/tra2occ_slope.launch"/>
+</launch>
