@@ -78,6 +78,8 @@ parser.add_argument("--use-omnilrs-physics", action="store_true",
                     help="同时采用 OmniLRS physics yaml 的 dt/gravity/solver/CCD 等设置；默认保留本闭环已校准物理")
 parser.add_argument("--no-rocks", action="store_true", help="禁用额外程序化碰撞石头")
 parser.add_argument("--rock-count", type=int, default=7, help="额外碰撞石头数量")
+parser.add_argument("--dome-intensity", type=float, default=0.0,
+                    help="天穹环境光强度，0 = 无（与 OmniLRS 月面一致，仅太阳直射）；>0 时用中性灰 dome 提亮阴影")
 parser.add_argument("--no-video-overlay", action="store_true", help="录制帧不叠加模式/VLM/速度 HUD")
 parser.add_argument("--no-path-visualization", action="store_true", help="不在 Isaac stage 中绘制导航路径线")
 args = parser.parse_args()
@@ -193,6 +195,32 @@ def _resolve_omnilrs_path(path: str) -> str:
     return os.path.join(args.omnilrs_root, path)
 
 
+def _disable_mdl_emission(stage, mtl_path: str) -> None:
+    """Force OmniPBR MDL emission off.
+
+    OmniLRS MDL 文件都带 emissive_color=(1,0.1,0.1) + emissive_intensity=40 的默认值
+    （enable_emission=false 理论上应关闭，但 Isaac MDL 运行时对某些材质不尊重该开关，
+    导致月面石头渲染成粉色）。这里在 USD 侧把 emission 相关 inputs 全部清零/关掉。
+    """
+    try:
+        material_prim = stage.GetPrimAtPath(mtl_path)
+        if not material_prim.IsValid():
+            return
+        for child in material_prim.GetChildren():
+            if child.IsA(UsdShade.Shader):
+                emit = child.GetAttribute("inputs:enable_emission")
+                if emit.IsValid():
+                    emit.Set(False)
+                col = child.GetAttribute("inputs:emissive_color")
+                if col.IsValid():
+                    col.Set(Gf.Vec3f(0.0, 0.0, 0.0))
+                intensity = child.GetAttribute("inputs:emissive_intensity")
+                if intensity.IsValid():
+                    intensity.Set(0.0)
+    except Exception as e:  # noqa: BLE001
+        log(f"[material] _disable_mdl_emission failed for {mtl_path}: {e!r}")
+
+
 def load_omnilrs_configs() -> dict:
     """Collect the OmniLRS configs used for appearance/rendering injection."""
     if args.no_omnilrs_look:
@@ -226,7 +254,7 @@ def apply_omnilrs_render_settings(render_cfg: dict) -> None:
     # quality control for headless captures.
     settings.set("/rtx/post/tonemap/enabled", True)
     settings.set("/rtx/post/tonemap/op", 4)
-    settings.set("/rtx/post/tonemap/filmIso", 400.0)
+    settings.set("/rtx/post/tonemap/filmIso", 100.0)
     settings.set("/rtx/post/tonemap/whitepoint", 6500.0)
     settings.set("/rtx/post/aa/op", 3)
 
@@ -381,10 +409,14 @@ def add_lighting(env_cfg: dict | None = None) -> None:
     except Exception:
         pass
     light.AddRotateXYZOp().Set(_sun_quat_to_rotate_xyz(elevation, azimuth))
-    # 天穹环境光，保证地形均匀受光（否则仅平行光时远景/近景明暗反差过大）。
-    dome = UsdLux.DomeLight.Define(stage, Sdf.Path("/World/Sky"))
-    dome.CreateIntensityAttr(300.0)
-    log(f"lighting: OmniLRS sun intensity={intensity}, angle={angle}, azimuth={azimuth}, elevation={elevation}; dome=300")
+    # 天穹环境光：OmniLRS 月面仅太阳直射（真空中无大气散射），因此默认不开 dome
+    # （默认 DomeLight 天空纹理是蓝色，会让场景整体偏蓝）。仅当 dome-intensity>0 时
+    # 创建 dome，并强制中性灰颜色避免任何偏色。
+    if args.dome_intensity > 0:
+        dome = UsdLux.DomeLight.Define(stage, Sdf.Path("/World/Sky"))
+        dome.CreateIntensityAttr(args.dome_intensity)
+        dome.CreateColorAttr(Gf.Vec3f(0.5, 0.5, 0.5))
+    log(f"lighting: OmniLRS sun intensity={intensity}, angle={angle}, azimuth={azimuth}, elevation={elevation}; dome={args.dome_intensity}")
 
 
 def create_omnilrs_terrain_material(stage) -> str | None:
@@ -400,6 +432,7 @@ def create_omnilrs_terrain_material(stage) -> str | None:
     stage.DefinePrim(looks_path, "Scope")
     material_name = os.path.splitext(os.path.basename(material_path))[0]
     mtl_path = f"{looks_path}/{material_name}"
+    mdl_ok = False
     try:
         omni.kit.commands.execute(
             "CreateMdlMaterialPrimCommand",
@@ -407,19 +440,22 @@ def create_omnilrs_terrain_material(stage) -> str | None:
             mtl_name=material_name,
             mtl_path=mtl_path,
         )
+        mdl_ok = True
+        _disable_mdl_emission(stage, mtl_path)
         log(f"created OmniLRS MDL material: {mtl_path} <- {material_path}")
     except Exception as e:  # noqa: BLE001
         log(f"CreateMdlMaterialPrimCommand failed for {material_path}: {e!r}; creating PreviewSurface only")
-        UsdShade.Material.Define(stage, mtl_path)
 
-    # Add a default-context UsdPreviewSurface fallback so headless rendering does
-    # not depend solely on MDL shader support.
-    material = UsdShade.Material.Get(stage, mtl_path)
-    preview = UsdShade.Shader.Define(stage, f"{mtl_path}/PreviewSurface")
-    preview.CreateIdAttr("UsdPreviewSurface")
-    preview.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.42, 0.40, 0.36))
-    preview.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.95)
-    material.CreateSurfaceOutput().ConnectToSource(preview.ConnectableAPI(), "surface")
+    if not mdl_ok:
+        # 仅当 MDL 加载失败时才用 UsdPreviewSurface 兜底；不要覆盖成功加载的 MDL surface output。
+        material = UsdShade.Material.Define(stage, mtl_path)
+        preview = UsdShade.Shader.Define(stage, f"{mtl_path}/PreviewSurface")
+        preview.CreateIdAttr("UsdPreviewSurface")
+        preview.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.42, 0.40, 0.36))
+        preview.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.95)
+        material.CreateSurfaceOutput().ConnectToSource(preview.ConnectableAPI(), "surface")
+    else:
+        material = UsdShade.Material.Get(stage, mtl_path)
 
     terrain = stage.GetPrimAtPath("/World/Terrain")
     if terrain.IsValid():
@@ -437,6 +473,7 @@ def create_omnilrs_preview_material(stage, material_key: str, preview_color, rou
     material_name = os.path.splitext(os.path.basename(material_path))[0] if material_path else material_key
     mtl_path = f"{looks_path}/{material_name}"
 
+    mdl_ok = False
     if material_path and os.path.exists(material_path):
         try:
             omni.kit.commands.execute(
@@ -445,23 +482,57 @@ def create_omnilrs_preview_material(stage, material_key: str, preview_color, rou
                 mtl_name=material_name,
                 mtl_path=mtl_path,
             )
+            mdl_ok = True
+            _disable_mdl_emission(stage, mtl_path)
             log(f"created OmniLRS MDL material: {mtl_path} <- {material_path}")
         except Exception as e:  # noqa: BLE001
             log(f"CreateMdlMaterialPrimCommand failed for {material_path}: {e!r}; using PreviewSurface fallback")
 
-    material = UsdShade.Material.Define(stage, mtl_path)
-    preview = UsdShade.Shader.Define(stage, f"{mtl_path}/PreviewSurface")
-    preview.CreateIdAttr("UsdPreviewSurface")
-    preview.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(
-        Gf.Vec3f(float(preview_color[0]), float(preview_color[1]), float(preview_color[2]))
-    )
-    preview.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(float(roughness))
-    material.CreateSurfaceOutput().ConnectToSource(preview.ConnectableAPI(), "surface")
+    if not mdl_ok:
+        # 仅当 MDL 加载失败时才用 UsdPreviewSurface 兜底；不要覆盖成功加载的 MDL surface output。
+        material = UsdShade.Material.Define(stage, mtl_path)
+        preview = UsdShade.Shader.Define(stage, f"{mtl_path}/PreviewSurface")
+        preview.CreateIdAttr("UsdPreviewSurface")
+        preview.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(
+            Gf.Vec3f(float(preview_color[0]), float(preview_color[1]), float(preview_color[2]))
+        )
+        preview.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(float(roughness))
+        material.CreateSurfaceOutput().ConnectToSource(preview.ConnectableAPI(), "surface")
+    else:
+        material = UsdShade.Material.Get(stage, mtl_path)
     return mtl_path
 
 
+def _make_rock_material(stage) -> UsdShade.Material:
+    """Gray UsdPreviewSurface for procedural rocks (no MDL).
+
+    The OmniLRS GravelStones.mdl shader fails to compile in Isaac 5.1
+    (``Unable to find SdrShaderNode``) AND its emissive_color leaks red on
+    shadowed faces, so the rocks render red. A plain gray PreviewSurface (white
+    diffuse so each rock's per-vertex displayColor gray noise shows through)
+    gives the same neutral-gray basalt look with zero shader-pool / emission
+    risk.
+    """
+    mtl_path = "/World/Looks/RockGravel"
+    if stage.GetPrimAtPath(mtl_path).IsValid():
+        return UsdShade.Material(stage.GetPrimAtPath(mtl_path))
+    material = UsdShade.Material.Define(stage, mtl_path)
+    preview = UsdShade.Shader.Define(stage, f"{mtl_path}/PreviewSurface")
+    preview.CreateIdAttr("UsdPreviewSurface")
+    preview.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(1.0, 1.0, 1.0))
+    preview.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.85)
+    material.CreateSurfaceOutput().ConnectToSource(preview.ConnectableAPI(), "surface")
+    return material
+
+
 def _make_boulder_mesh(seed: int, radius_xy: float, radius_z: float) -> trimesh.Trimesh:
-    """Low-poly irregular boulder, base roughly at z=0."""
+    """Low-poly irregular boulder, base roughly at z=0.
+
+    Rocks use the OmniLRS GravelStones *texture* color (neutral gray, mean RGB
+    ≈79,78,77 → 0.31) as a per-vertex gray noise so each face reads like basalt
+    gravel — WITHOUT the GravelStones.mdl shader (whose emissive leaks red AND
+    whose SdrShaderNode fails to compile in Isaac 5.1, leaving the rock red).
+    """
     rng = np.random.default_rng(seed)
     mesh = trimesh.creation.icosphere(subdivisions=2, radius=1.0)
     verts = np.asarray(mesh.vertices, dtype=np.float64)
@@ -472,6 +543,14 @@ def _make_boulder_mesh(seed: int, radius_xy: float, radius_z: float) -> trimesh.
     verts[:, 2] *= radius_z * rng.uniform(0.75, 1.25)
     verts[:, 2] -= verts[:, 2].min()
     mesh.vertices = verts
+    # Per-vertex gray noise (0.18..0.44, centered on GravelStones' 0.31): looks
+    # like basalt gravel patches. Rendered via primvars:displayColor, then the
+    # rock material's white diffuse multiplies onto it — no texture/UV needed.
+    nv = len(verts)
+    grey = 0.31 * (1.0 + 0.4 * rng.normal(0.0, 1.0, size=nv))
+    grey = np.clip(grey, 0.14, 0.46)
+    rgba = np.stack([grey, grey, grey, np.full(nv, 255.0)], axis=1).astype(np.uint8)
+    mesh.visual.vertex_colors = rgba
     return mesh
 
 
@@ -481,8 +560,10 @@ def add_collidable_rocks(stage) -> list[str]:
         log("extra collidable rocks disabled")
         return []
 
-    material_path = create_omnilrs_preview_material(stage, "RockBoulderDry", (0.28, 0.27, 0.24), 0.95)
-    material = UsdShade.Material(stage.GetPrimAtPath(material_path))
+    # 石头用 GravelStones 的中性灰（RGB≈79,78,77，玄武岩碎石）但不加载其 MDL：
+    # 该 MDL 的 shader 在 Isaac 5.1 编译失败（SdrShaderNode 找不到）且 emissive
+    # 泄漏红色，直接用灰色 PreviewSurface + 逐顶点灰噪声更稳（见 _make_rock_material）。
+    material = _make_rock_material(stage)
 
     # First two sit on the existing boulder field corridor; the rest add visible
     # obstacles around the route without changing the start/goal convention.
@@ -502,7 +583,8 @@ def add_collidable_rocks(stage) -> list[str]:
     stage.DefinePrim("/World/Rocks", "Xform")
     for idx, (x, y, rxy, rz) in enumerate(specs):
         mesh = _make_boulder_mesh(1000 + idx, rxy, rz)
-        z = terrain_z(x, y)
+        # 略高于地形（mesh 底部 z=0），交给 RigidBody 重力落到地表贴合，避免静态悬空。
+        z = terrain_z(x, y) + 0.05
         path = f"/World/Rocks/Boulder_{idx:02d}"
         create_prim_from_mesh(path, mesh, translation=(x, y, z))
         prim = stage.GetPrimAtPath(path)
@@ -512,6 +594,14 @@ def add_collidable_rocks(stage) -> list[str]:
             mesh_collision.CreateApproximationAttr().Set("convexHull")
         except Exception as e:  # noqa: BLE001
             log(f"[rocks] MeshCollisionAPI unavailable for {path}: {e!r}")
+        # 重力刚体：让石头真实落到地表（受月球重力），而非静态贴图悬空。
+        UsdPhysics.RigidBodyAPI.Apply(prim)
+        try:
+            # 质量用 UsdPhysics.MassAPI（PhysxRigidBodyAPI 没有 CreateMassAttr）。
+            # 30 kg 足够重，车撞不飞，保持原翻车物理。
+            UsdPhysics.MassAPI.Apply(prim).CreateMassAttr().Set(30.0)
+        except Exception as e:  # noqa: BLE001
+            log(f"[rocks] MassAPI unavailable for {path}: {e!r}")
         UsdShade.MaterialBindingAPI.Apply(prim).Bind(material, UsdShade.Tokens.strongerThanDescendants)
         paths.append(path)
 
@@ -545,7 +635,7 @@ def update_path_curve(stage, points: list[tuple[float, float]], mode: str) -> No
     curve.CreateTypeAttr().Set("linear")
     curve.CreateCurveVertexCountsAttr().Set([len(pts)])
     curve.CreatePointsAttr().Set(Vt.Vec3fArray(pts))
-    curve.CreateWidthsAttr().Set(Vt.FloatArray([0.10] * len(pts)))
+    curve.CreateWidthsAttr().Set(Vt.FloatArray([0.03] * len(pts)))  # 细引导线，避免遮挡地形
     curve.CreateDisplayColorAttr().Set(Vt.Vec3fArray([color]))
 
 
