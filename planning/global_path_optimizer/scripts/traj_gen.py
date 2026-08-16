@@ -144,38 +144,4 @@ if __name__ == "__main__":
     ## 模式切换
     if(config.mode_activate == True):
         mode_sub = rospy.Subscriber(config.mode_topic, String, mode_callback)
-    # 循环
-    while(not rospy.is_shutdown()):
-        rospy.spin()
-
-
-
-
-
-
-
-
-
-
-
-
-
-if __name__ == '__main__':
-    # 初始化节点
-    rospy.init_node('trajectory_optimizer', anonymous=True)
-    # 发布者和订阅者
-    ## 全局
-    global_path_sub = rospy.Subscriber(config.global_path_input_topic, Path, global_path_callback)
-    global_trajectory_pub = rospy.Publisher(config.global_trajectory_output_topic, Path, queue_size=10)
-    ## 局部
-    local_path_sub = rospy.Subscriber(config.local_path_input_topic, Path, local_path_callback)
-    local_trajectory_pub = rospy.Publisher(config.local_trajectory_output_topic, Path, queue_size=10)
-    ## 车辆位姿
-    pose_sub = rospy.Subscriber(config.pose_topic, PoseWithCovarianceStamped, pose_callback)
-    ## 模式切换
-    if(config.mode_activate == true):
-        mode_sub = rospy.Subscriber(config.mode_topic, String, mode_callback)
-    # 循环
     rospy.spin()
-
-

@@ -1,0 +1,10 @@
+VLM terrain classification -> navigation mode (from runs/vlm/stack.log)
+========================================================================
+terrain=flat (rock=0.00, slope=0.00) -> Mode 1
+   mode -> Mode 1 (speed 2.00 m/s)
+   mode -> Mode 2 (speed 0.80 m/s)
+terrain=rocky (rock=0.85, slope=0.00) -> Mode 2
+   mode -> Mode 3 (speed 0.50 m/s)
+terrain=challenging (rock=0.60, slope=0.80) -> Mode 3
+terrain=flat (rock=0.00, slope=0.00) -> Mode 1
+   mode -> Mode 1 (speed 2.00 m/s)

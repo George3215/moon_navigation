@@ -1,0 +1,62 @@
+FROM osrf/ros:noetic-desktop-full
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-catkin-tools \
+    python3-pip \
+    python3-rosdep \
+    python3-vcstool \
+    git \
+    build-essential \
+    ros-noetic-gazebo-ros \
+    ros-noetic-gazebo-ros-control \
+    ros-noetic-gazebo-plugins \
+    ros-noetic-rqt \
+    ros-noetic-rqt-gui \
+    ros-noetic-rqt-gui-py \
+    ros-noetic-rviz \
+    ros-noetic-pcl-ros \
+    ros-noetic-pcl-conversions \
+    ros-noetic-tf-conversions \
+    ros-noetic-rtabmap-ros \
+    ros-noetic-compressed-image-transport \
+    ros-noetic-controller-manager \
+    ros-noetic-joint-state-controller \
+    ros-noetic-diff-drive-controller \
+    ros-noetic-cv-bridge \
+    ros-noetic-image-transport \
+    ros-noetic-pybind11-catkin \
+    ros-noetic-grid-map-core \
+    ros-noetic-grid-map-msgs \
+    ros-noetic-grid-map-ros \
+    ros-noetic-grid-map-rviz-plugin \
+    ros-noetic-ros-numpy \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rosdep init 2>/dev/null || true
+
+WORKDIR /mars_ws/src/mars_navigation
+COPY . /mars_ws/src/mars_navigation
+
+RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir cupy-cuda11x
+RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+WORKDIR /mars_ws
+RUN source /opt/ros/noetic/setup.bash \
+    && rosdep update \
+    && rosdep install --from-paths src --ignore-src -r -y || true
+
+RUN source /opt/ros/noetic/setup.bash \
+    && catkin config --extend /opt/ros/noetic \
+    && catkin build globalmap_server \
+    && catkin build -DCMAKE_BUILD_TYPE=Release
+
+RUN echo 'source /opt/ros/noetic/setup.bash' >> /root/.bashrc \
+    && echo 'source /mars_ws/devel/setup.bash' >> /root/.bashrc \
+    && echo 'export PYTHON_BIN=/usr/bin/python3' >> /root/.bashrc
+
+WORKDIR /mars_ws
+CMD ["/bin/bash"]

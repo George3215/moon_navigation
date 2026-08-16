@@ -1,0 +1,4 @@
+uint8 mode
+nav_msgs/OccupancyGrid update_map
+---
+bool updated

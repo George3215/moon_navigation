@@ -1,0 +1,111 @@
+==================== ros2 node list ====================
+/global_path_optimizer
+/global_planner
+/hazard_mapper
+/image_to_map
+/local_planner
+/map_server
+/path_follower
+/pose_simulator
+/terrain_image_publisher
+/vlm_mode
+
+==================== ros2 topic list ====================
+/cmd_vel
+/global_planner/global_path
+/local_planner/local_goal
+/local_planner/local_map
+/local_planner/local_path
+/map_server/global_map
+/map_server/global_path_updated
+/map_server/mode_map
+/map_server/replan_signal
+/mode1/occupancy_grid
+/mode2/occupancy_grid
+/mode3/occupancy_grid
+/move_base_simple/goal
+/navigation_mode
+/parameter_events
+/pose_with_covariance
+/rosout
+/terrain/image
+/trajectory_ctrl/global_path_updated
+
+==================== /navigation_mode (last msg) ====================
+data: Mode 2
+---
+
+==================== /pose_with_covariance (last msg) ====================
+header:
+  stamp:
+    sec: 1786788987
+    nanosec: 139787553
+  frame_id: odom
+pose:
+  pose:
+    position:
+      x: 2.7712243452522642
+      y: -1.2312170771258701
+      z: 0.0
+    orientation:
+      x: 0.0
+      y: 0.0
+      z: 0.059527096252295776
+      w: 0.9982266900918698
+  covariance:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+---
+
+==================== /map_server/global_map (header) ====================
+map_load_time:
+  sec: 0
+  nanosec: 0
+resolution: 0.20000000298023224
+width: 270
+height: 270
+origin:
+  position:
+    x: -27.0
+    y: -27.0
+    z: 0.0
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+---

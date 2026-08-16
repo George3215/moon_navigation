@@ -14,11 +14,23 @@
 # =============================================================
 
 # Example:
-#   PYTHON_BIN="$HOME/miniconda3/envs/mars_nav/bin/python"
+#   export PYTHON_BIN="$HOME/miniconda3/envs/mars_nav/bin/python"
 # You can also export PYTHON_BIN before launching the stack.
+#
+# Resolution order:
+#   1. Existing PYTHON_BIN environment variable.
+#   2. A local conda environment named mars_nav.
+#   3. python3 from PATH.
+if [ -z "${PYTHON_BIN:-}" ]; then
+    if command -v conda >/dev/null 2>&1; then
+        CONDA_BASE="$(conda info --base 2>/dev/null || true)"
+        if [ -n "$CONDA_BASE" ] && [ -x "$CONDA_BASE/envs/mars_nav/bin/python" ]; then
+            PYTHON_BIN="$CONDA_BASE/envs/mars_nav/bin/python"
+        fi
+    fi
+fi
 
-# PYTHON_BIN="${PYTHON_BIN:-python3}"
-PYTHON_BIN="/home/chengsn/anaconda3/envs/torch_38/bin/python"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 if [[ "$PYTHON_BIN" == */* ]]; then
     RESOLVED_PYTHON_BIN="$PYTHON_BIN"

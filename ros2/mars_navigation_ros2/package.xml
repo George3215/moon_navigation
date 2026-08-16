@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>mars_navigation_ros2</name>
+  <version>0.1.0</version>
+  <description>ROS2 Humble reproduction nodes for the Mars navigation paper stack.</description>
+  <maintainer email="lry@example.com">lry</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>rclpy</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>sensor_msgs_py</depend>
+  <depend>mars_navigation_interfaces</depend>
+
+  <exec_depend>ros2launch</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

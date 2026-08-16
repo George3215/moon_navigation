@@ -1,0 +1,4 @@
+bool global_path
+nav_msgs/Path path
+---
+bool success

@@ -1,0 +1,3 @@
+nav_msgs/OccupancyGrid global_map
+---
+bool initialized

@@ -2,3 +2,15 @@
 *.pyc
 __pycache__/
 
+# ROS 2 colcon build artifacts
+ros2/build/
+ros2/install/
+ros2/log/
+ros2/.venv/
+
+# Generated experiment outputs (videos / photos / metrics stay local)
+ros2/runs_isaac/
+ros2/runs/
+
+# Large local artifacts not part of the fork
+*.pdf
